@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:compat="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="martin.compras.de.lista.app.com.begu.Activities.PrincipalActivity">
+
+    <item
+        android:id="@+id/actionSync"
+        android:title="Sincronizar"
+        android:actionLayout="@layout/action_refresh"
+        android:icon="@drawable/ic_sync"
+        compat:showAsAction="ifRoom"
+        />
+
+    <item
+        android:id="@+id/actionSyncupload"
+        android:title="Sincronizar"
+        android:actionLayout="@layout/action_refresh"
+        android:icon="@drawable/ic_syncupload"
+        compat:showAsAction="ifRoom"
+        />
+
+
+</menu>

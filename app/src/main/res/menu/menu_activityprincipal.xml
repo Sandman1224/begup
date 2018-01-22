@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:compat="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="martin.compras.de.lista.app.com.begu.Activities.PrincipalActivity">
+
+    <item
+        android:id="@+id/actionConfigurar"
+        android:title="Configuración"
+        android:icon="@drawable/ic_action_configurar"
+        compat:showAsAction="ifRoom"
+        />
+
+    <item
+        android:id="@+id/actionSincronizar"
+        android:title="Sincronizar"
+        android:icon="@drawable/ic_sync"
+        compat:showAsAction="ifRoom"
+
+        />
+
+    <item
+        android:id="@+id/actionSalir"
+        android:icon="@drawable/ic_salir"
+        android:title="Salir"
+        compat:showAsAction="ifRoom"
+        />
+
+</menu>

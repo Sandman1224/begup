@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_principal"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="martin.compras.de.lista.app.com.begu.Activities.PrincipalActivity"
+    android:orientation="vertical"
+    android:weightSum="1"
+    >
+
+    <RelativeLayout
+        android:id="@+id/loControles"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.5">
+
+        <com.journeyapps.barcodescanner.DecoratedBarcodeView
+            android:id="@+id/barcode_scanner"
+            android:layout_width="match_parent"
+            android:layout_height="350dp"></com.journeyapps.barcodescanner.DecoratedBarcodeView>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/barcode_scanner"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal">
+
+            <android.support.design.widget.FloatingActionButton
+                android:id="@+id/btnResumir"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:elevation="6dp"
+                android:onClick="resume"
+                android:src="@drawable/ic_scanner" />
+
+            <android.support.design.widget.FloatingActionButton
+                android:id="@+id/btnDetener"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:elevation="6dp"
+                android:onClick="pause"
+                android:src="@drawable/ic_detener" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/loDatos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/loControles"
+        android:layout_weight="0.5"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/ivEstado"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_gravity="center_horizontal" />
+
+        <TextView
+            android:id="@+id/lblNombre"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_toEndOf="@+id/ivEstado"
+            android:layout_toRightOf="@+id/ivEstado"
+            android:text="Nombre: "
+            android:textSize="@dimen/text_size_medium"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvNombre"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_toEndOf="@+id/lblNombre"
+            android:layout_toRightOf="@+id/lblNombre"
+            android:text="Nombre"
+            android:textSize="@dimen/text_size_medium" />
+
+        <TextView
+            android:id="@+id/lblGenero"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/lblNombre"
+            android:layout_toEndOf="@+id/ivEstado"
+            android:layout_toRightOf="@+id/ivEstado"
+            android:text="Genero: "
+            android:textSize="@dimen/text_size_medium"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvGenero"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/lblNombre"
+            android:layout_toEndOf="@+id/lblGenero"
+            android:layout_toRightOf="@+id/lblGenero"
+            android:text="Genero"
+            android:textSize="@dimen/text_size_medium" />
+
+        <TextView
+            android:id="@+id/lblSaldo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/lblGenero"
+            android:layout_toEndOf="@+id/ivEstado"
+            android:layout_toRightOf="@+id/ivEstado"
+            android:text="Saldo: "
+            android:textSize="@dimen/text_size_medium"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvSaldo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/lblGenero"
+            android:layout_toEndOf="@+id/lblSaldo"
+            android:layout_toRightOf="@+id/lblSaldo"
+            android:text="Saldo"
+            android:textSize="@dimen/text_size_medium" />
+
+        <ImageView
+            android:id="@+id/ivAlumno"
+            android:layout_width="300dp"
+            android:layout_height="300dp"
+            app:srcCompat="@drawable/ic_alumno"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true"
+            android:layout_below="@+id/ivEstado" />
+
+    </RelativeLayout>
+
+
+</LinearLayout>

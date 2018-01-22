@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="Configuración de la Aplicación">
+        <ListPreference
+            android:key="opcion1"
+            android:title="Camara"
+            android:summary="Selección de la camara para el escaneo de códigos"
+            android:dialogTitle="Indicar Camara"
+            android:entries="@array/camara"
+            android:entryValues="@array/codigocamara"
+            android:defaultValue="0"
+            />
+    </PreferenceCategory>
+
+
+</PreferenceScreen>
