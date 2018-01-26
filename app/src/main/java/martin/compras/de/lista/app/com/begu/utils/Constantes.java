@@ -16,7 +16,7 @@ public class Constantes {
      * Dirección IP de genymotion o AVD
      */
     private static final String IP = "http://192.168.1.106";
-    private static final String DIRECCION_WEB = "http://begup2.jujuy.gob.ar";
+    private static final String DIRECCION_WEB = "http://begup.jujuy.gob.ar";
 
     /**
      * URLs del Web Service
@@ -40,7 +40,7 @@ public class Constantes {
     public static final String MENSAJE = "mensaje";
 
     /**
-     * Códigos del campo {@link ESTADO}
+     * Códigos del campo {@link "ESTADO"}
      */
     public static final String SUCCESS = "1";
     public static final String FAILED = "2";
