@@ -214,7 +214,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         }else{
             //Desde el Servidor
             datosAlumnos(syncResult);
-            datosTarjetas(syncResult);
+            sincronizarTarjetas(syncResult);
             datosFotos(syncResult);
         }
 
@@ -242,11 +242,10 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                 break;
             case "Tarjetas":
                 Boolean tarjSync = preferences.getBoolean("SyncTarjetas", false);
-                String SyncId = preferences.getString(Constantes.PREF_SYNCTARJETAS, "");
-                if(tarjSync || SyncId == "")
+                if(tarjSync)
                     DIRECCION_WS = Constantes.GET_URL_TARJETAS_CATCH;
                 else
-                    DIRECCION_WS = Constantes.GET_URL_TARJETAS_SYNCID + "/" + preferences.getString(Constantes.PREF_SYNCTARJETAS , "");
+                    DIRECCION_WS = Constantes.TARJETAS_UPDATE;
                 break;
             default:
                 Log.i(TAG, "Error");
@@ -329,6 +328,42 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         getContext().sendBroadcast(intent);
     }
 
+    public void sincronizarTarjetas(final SyncResult syncResult){
+        Intent intent = new Intent(SyncActivity.ACTION_SYNC);
+        String DIRECCION_WS = obtenerDireccionws("Tarjetas");
+
+        switch (DIRECCION_WS){
+            case Constantes.GET_URL_TARJETAS_CATCH:
+                datosTarjetas(syncResult);
+                break;
+            case Constantes.TARJETAS_UPDATE:
+                datosPasajesconsumidos(syncResult);
+                break;
+            default:
+                Log.i(TAG, "Error");
+        }
+
+        //Resultado de la sincronización
+        if(syncResult.stats.numParseExceptions > 0 || syncResult.stats.numIoExceptions > 0){
+            syncResult.delayUntil = 30;
+
+            //Enviar una señal informando el error
+            intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_TARJETASERROR);
+        }else{
+            SharedPreferences preferences = getContext().getSharedPreferences(Constantes.PREFERENCIAS, Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putBoolean("SyncTarjetas", false);
+            editor.commit();
+
+            //Enviar una señal informando la sincronización correcta
+            intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_TARJETASSINCRONIZADAS);
+        }
+
+        Log.i("SyncResultTarjetas", "Inserciones: " + syncResult.stats.numInserts + " Entradas: " + syncResult.stats.numEntries + " Actualizaciones: " + syncResult.stats.numUpdates + " Eliminaciones: " + syncResult.stats.numDeletes);
+
+        getContext().sendBroadcast(intent);
+    }
+
     public void datosTarjetas(final SyncResult syncResult){
         Log.i(TAG, "Obteniendo datos de tarjetas desde el servidor");
 
@@ -383,38 +418,15 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             }
         }
 
-        //Sincronizacion de las tarjetas por pasajes consumidos
-        datosPasajesconsumidos(syncResult);
 
-        //Resultado de la sincronización
-        if(syncResult.stats.numParseExceptions > 0 || syncResult.stats.numIoExceptions > 0){
-            syncResult.delayUntil = 30;
-
-            //Enviar una señal informando el error
-            intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_TARJETASERROR);
-        }else{
-            SharedPreferences preferences = getContext().getSharedPreferences(Constantes.PREFERENCIAS, Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = preferences.edit();
-            editor.putString(Constantes.PREF_SYNCTARJETAS, syncId);
-            editor.putBoolean("SyncTarjetas", false);
-            editor.commit();
-
-            //Enviar una señal informando la sincronización correcta
-            intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_TARJETASSINCRONIZADAS);
-        }
-
-        Log.i("SyncResultTarjetas", "Inserciones: " + syncResult.stats.numInserts + " Entradas: " + syncResult.stats.numEntries + " Actualizaciones: " + syncResult.stats.numUpdates + " Eliminaciones: " + syncResult.stats.numDeletes);
-
-        getContext().sendBroadcast(intent);
     }
 
     private void datosPasajesconsumidos(final SyncResult syncResult){
+        // Trae solo las tarjetas que tienen consumo para evitar traer toda la tabla
         //En construcción
         boolean bFin = false;
-        String DIRECCION_WS = "http://begup2.jujuy.gob.ar:81/ws/tarjetaupdate";
+        String DIRECCION_WS = Constantes.TARJETAS_UPDATE;
         int cantidadPaginas = 0;
-
-        long entradas = syncResult.stats.numEntries;
 
         while(!bFin){
             try{
@@ -440,7 +452,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                     JSONArray tarjetas = response.getJSONArray("Tarjetas");
 
                     int respuesta = tarjetas.length();
-                    int regProcesados = respuestaTarjetas(syncResult, tarjetas);//Revisar esta línea
+                    int regProcesados = respuestaTarjetas(syncResult, tarjetas);
 
                     Log.i("Paginación Consumos", DIRECCION_WS);
 

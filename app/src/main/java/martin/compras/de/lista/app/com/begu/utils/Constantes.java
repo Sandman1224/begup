@@ -29,6 +29,7 @@ public class Constantes {
 
     public static final String GET_URL_FOTOS = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/fotosbegup";
     public static final String INSERT_CONSUMOS = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/consumobegup/";
+    public static final String TARJETAS_UPDATE = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/tarjetaupdate/";
 
     /**
      * Campos de las respuestas Json
@@ -40,7 +41,7 @@ public class Constantes {
     public static final String MENSAJE = "mensaje";
 
     /**
-     * Códigos del campo {@link "ESTADO"}
+     * Códigos del campo {@link ESTADO}
      */
     public static final String SUCCESS = "1";
     public static final String FAILED = "2";
