@@ -12,6 +12,7 @@ import android.content.SyncInfo;
 import android.content.SyncStatusObserver;
 import android.database.ContentObserver;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -57,9 +58,6 @@ public class SyncActivity extends AppCompatActivity {
     private AdaptadorUsuarios adapter;
     private TextView tvFechaactualizacion;
 
-    private ListView listView;
-    private MenuItem refreshItem;
-    private ContentObserver observer;
     private ProgressDialog pDialog;
     public ArrayList<ListViewItem> datos;
 
@@ -86,6 +84,7 @@ public class SyncActivity extends AppCompatActivity {
     public final static String SYNC_ACTION = "SYNC_ACTION";
 
     public static final String ACTION_SYNC_ERROR = "SYNC/error";
+    public static final String ACTION_SYNC_SUCCESS = "SYNC/success";
 
     public static final String ACTION_SYNC = "martin.compras.de.lista.app.com.begu.Activities.SyncActivity.ACTION_SYNC";
     public static final String ACTION_SYNC_START = "martin.compras.de.lista.app.com.begu.Activities.SyncActivity.ACTION_SYNC_START";
@@ -94,7 +93,6 @@ public class SyncActivity extends AppCompatActivity {
     public static final String ACTION_SYNC_TARJETAS = "martin.compras.de.lista.app.com.begu.Activities.SyncActivity.ACTION_SYNC_TARJETAS";
     public static final String ACTION_SYNC_FOTOS = "martin.compras.de.lista.app.com.begu.Activities.SyncActivity.ACTION_SYNC_FOTOS";
     public static final String ACTION_SYNC_REMOTA = "martin.compras.de.lista.app.com.begu.Activities.SyncActivity.ACTION_SYNC_REMOTA";
-    private static IntentFilter syncIntentFilter = new IntentFilter(ACTION_SYNC);
 
     private MyReceiver receiver;
 
@@ -174,7 +172,6 @@ public class SyncActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-
         registerReceiver(receiver, new IntentFilter(ACTION_SYNC));
     }
 
@@ -207,16 +204,6 @@ public class SyncActivity extends AppCompatActivity {
                 else {
                     if(!SyncAdapter.estaSincronizando(this)) {
                         SyncAdapter.sincronizarAhora(getApplicationContext(), false);
-
-                        //Obtenemos datos para la fecha y hora de la última sincronización
-                        Calendar calendario = Calendar.getInstance();
-                        SimpleDateFormat sdf = new SimpleDateFormat("d/M/y HH:mm:ss");
-                        SharedPreferences preferences = this.getSharedPreferences(Constantes.PREFERENCIAS, Context.MODE_PRIVATE);
-                        SharedPreferences.Editor editor = preferences.edit();
-                        editor.putString(Constantes.PREF_FECHAACTUALIZACION, sdf.format(calendario.getTime()));
-                        editor.commit();
-
-                        tvFechaactualizacion.setText("Última Actualización: " + sdf.format(calendario.getTime()));
                     }else{
                         Toast.makeText(this, "Hay una sincronización en curso", Toast.LENGTH_LONG).show();
                     }
@@ -307,6 +294,28 @@ public class SyncActivity extends AppCompatActivity {
         datos.add(new ListViewItem("Consumos", sharedPreferences.getString("consumosSync", "Sincronizando")));
     }
 
+    public void updateTv(final String Mensaje, final int operacion){
+        SyncActivity.this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                tvFechaactualizacion = (TextView)findViewById(R.id.tvFechaactualizacion);
+                tvFechaactualizacion.setText(Mensaje);
+
+                switch (operacion){
+                    case 1:
+                        tvFechaactualizacion.setTextColor(Color.parseColor("#1E8449"));
+                        break;
+                    case 2:
+                        tvFechaactualizacion.setTextColor(Color.parseColor("#CC6699"));
+                        break;
+                    default:
+                        tvFechaactualizacion.setTextColor(Color.parseColor("#F1C40F"));
+                        break;
+                }
+            }
+        });
+    }
+
     public class ListViewItem{
         private String titulo;
         private String estado;
@@ -365,8 +374,13 @@ public class SyncActivity extends AppCompatActivity {
                             hideDialog();
                             break;
                         case ACTION_SYNC_ERROR:
-                            Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show();
+                            ((SyncActivity)context).updateTv("Error de Sincronización", 2);
                             hideDialog();
+                            break;
+                        case ACTION_SYNC_SUCCESS:
+                            SharedPreferences prefs = context.getSharedPreferences(Constantes.PREFERENCIAS, Context.MODE_PRIVATE);
+                            ((SyncActivity)context).updateTv("Última Actualización: " + prefs.getString(Constantes.PREF_FECHAACTUALIZACION, "No Sincronizado"), 1);
+
                             break;
                         case ACTION_SYNC_ALUMNOSSINCRONIZADOS:
                             item = items.get(0);

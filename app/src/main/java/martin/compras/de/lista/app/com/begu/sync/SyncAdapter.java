@@ -207,7 +207,6 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_START);
         getContext().sendBroadcast(intent);
 
-
         if(subida) {
             //Hacia el Servidor
             datosPasajes();
@@ -216,6 +215,21 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             datosAlumnos(syncResult);
             sincronizarTarjetas(syncResult);
             datosFotos(syncResult);
+
+            if(syncResult.stats.numParseExceptions > 0 || syncResult.stats.numIoExceptions > 0){
+                intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_ERROR);
+            }else{
+                //Obtenemos datos para la fecha y hora de la última sincronización
+                Calendar calendario = Calendar.getInstance();
+                SimpleDateFormat sdf = new SimpleDateFormat("d/M/y HH:mm:ss");
+                SharedPreferences preferences = getContext().getSharedPreferences(Constantes.PREFERENCIAS, Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = preferences.edit();
+                editor.putString(Constantes.PREF_FECHAACTUALIZACION, sdf.format(calendario.getTime()));
+                editor.commit();
+
+                intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_SUCCESS);
+            }
+            getContext().sendBroadcast(intent);
         }
 
         intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_FINISH);
@@ -345,8 +359,6 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
 
         //Resultado de la sincronización
         if(syncResult.stats.numParseExceptions > 0 || syncResult.stats.numIoExceptions > 0){
-            syncResult.delayUntil = 30;
-
             //Enviar una señal informando el error
             intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_TARJETASERROR);
         }else{
@@ -359,9 +371,9 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_TARJETASSINCRONIZADAS);
         }
 
-        Log.i("SyncResultTarjetas", "Inserciones: " + syncResult.stats.numInserts + " Entradas: " + syncResult.stats.numEntries + " Actualizaciones: " + syncResult.stats.numUpdates + " Eliminaciones: " + syncResult.stats.numDeletes);
-
         getContext().sendBroadcast(intent);
+
+        Log.i("SyncResultTarjetas", "Inserciones: " + syncResult.stats.numInserts + " Entradas: " + syncResult.stats.numEntries + " Actualizaciones: " + syncResult.stats.numUpdates + " Eliminaciones: " + syncResult.stats.numDeletes);
     }
 
     public void datosTarjetas(final SyncResult syncResult){
@@ -370,7 +382,6 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         Intent intent = new Intent(SyncActivity.ACTION_SYNC);
         boolean bFin = false;
         String DIRECCION_WS = obtenerDireccionws("Tarjetas");
-        String syncId = null;
         int cantidadPaginas = 0;
 
         //Sincronización de las tarjetas por cambios de datos
@@ -384,7 +395,6 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                 JSONObject response = future.get(60, TimeUnit.SECONDS);
                 int cantidadRegistros = response.getInt("TotalCount");
                 int pagecountServer = response.getInt("TotalPageCount");
-                syncId = response.getString("Sync");
 
                 if(cantidadRegistros > 0){
                     JSONArray tarjetas = response.getJSONArray("Tarjetas");
@@ -417,8 +427,6 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                 syncResult.stats.numParseExceptions++;
             }
         }
-
-
     }
 
     private void datosPasajesconsumidos(final SyncResult syncResult){
@@ -501,15 +509,10 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                     Log.i("Datos Servidor", response.toString());
 
                     respuestaFotos(syncResult, response);
-                }catch (InterruptedException e){
+                }catch (InterruptedException | ExecutionException | TimeoutException e){
                     e.printStackTrace();
                     bFin = true;
-                }catch (ExecutionException e){
-                    e.printStackTrace();
-                    bFin = true;
-                }catch (TimeoutException e){
-                    e.printStackTrace();
-                    bFin = true;
+                    syncResult.stats.numParseExceptions++;
                 }
 
                 if(bFin){

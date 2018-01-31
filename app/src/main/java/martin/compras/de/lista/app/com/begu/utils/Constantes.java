@@ -25,11 +25,11 @@ public class Constantes {
     public static final String GET_URL_ALUMNOS_SYNCID = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/alumno";
 
     public static final String GET_URL_TARJETAS_CATCH = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/initarjeta";
-    public static final String GET_URL_TARJETAS_SYNCID = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/tarjeta";
+    public static final String TARJETAS_UPDATE = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/tarjetaupdate";
+
 
     public static final String GET_URL_FOTOS = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/fotosbegup";
     public static final String INSERT_CONSUMOS = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/consumobegup/";
-    public static final String TARJETAS_UPDATE = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/tarjetaupdate/";
 
     /**
      * Campos de las respuestas Json
