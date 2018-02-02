@@ -2,10 +2,13 @@ package martin.compras.de.lista.app.com.begu.Activities;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.DialogFragment;
 import android.content.ContentProviderOperation;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.OperationApplicationException;
@@ -24,9 +27,11 @@ import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
 import android.provider.ContactsContract;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Layout;
@@ -78,18 +83,21 @@ import java.util.Calendar;
 import java.util.List;
 
 import martin.compras.de.lista.app.com.begu.Clases.SessionManager;
+import martin.compras.de.lista.app.com.begu.Fragments.PermisosDialogFragment;
 import martin.compras.de.lista.app.com.begu.Helpers.DataBaseHelper;
 import martin.compras.de.lista.app.com.begu.Preferencias.OpcionesActivity;
 import martin.compras.de.lista.app.com.begu.R;
 import martin.compras.de.lista.app.com.begu.providers.ContratoDatos;
 import martin.compras.de.lista.app.com.begu.utils.Constantes;
 
-public class PrincipalActivity extends AppCompatActivity implements GoogleApiClient.OnConnectionFailedListener,
-GoogleApiClient.ConnectionCallbacks,
+public class PrincipalActivity extends AppCompatActivity implements
+        GoogleApiClient.OnConnectionFailedListener,
+        GoogleApiClient.ConnectionCallbacks,
         LocationListener{
 
     private static final String TAG = PrincipalActivity.class.getSimpleName();
     private static final String LOGGPS = "localizacion";
+    private static final String LOGCAMERA = "camara";
     private TextView tvNombre;
     private TextView tvGenero;
     private TextView tvSaldo;
@@ -106,6 +114,9 @@ GoogleApiClient.ConnectionCallbacks,
     private GoogleApiClient apiClient;
     private LocationRequest locRequest;
     private Location location;
+    private static final int PETICION_CONFIG_UBICACION = 201;
+    private static final int PETICION_PERMISO_LOCALIZACION = 101;
+    private static final int PETICION_PERMISO_CAMARA = 102;
 
     private BarcodeCallback callback = new BarcodeCallback() {
         @Override
@@ -114,13 +125,11 @@ GoogleApiClient.ConnectionCallbacks,
                 //Prevenir escaneos duplicados
                 if ((result.getText() != null) && (result.getText().equals(lastText))) {
                     Log.i("ESCANEO", "El código ya fue escaneado");
-                    //Toast.makeText(getApplicationContext(), "El resultado ya fue escaneado", Toast.LENGTH_SHORT).show();
                 }
                 return;
             }
 
             lastText = result.getText();
-            //barcodeView.setStatusText(result.getText());
             beepManager.playBeepSoundAndVibrate();
 
             consultarTarjeta(lastText);
@@ -128,11 +137,9 @@ GoogleApiClient.ConnectionCallbacks,
 
         @Override
         public void possibleResultPoints(List<ResultPoint> resultPoints) {
-
+            //Resultados posibles
         }
     };
-    private static final int PETICION_CONFIG_UBICACION = 201;
-    private static final int PETICION_PERMISO_LOCALIZACION = 101;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -154,13 +161,6 @@ GoogleApiClient.ConnectionCallbacks,
 
         //Inicializamos la obtención de localizaciones
         enableLocationUpdates();
-    }
-
-    @Override
-    protected void onRestart() {
-        enableLocationUpdates();
-
-        super.onRestart();
     }
 
     private void enableLocationUpdates(){
@@ -207,7 +207,7 @@ GoogleApiClient.ConnectionCallbacks,
     }
 
     private void startLocationUpdates(){
-        if(ActivityCompat.checkSelfPermission(PrincipalActivity.this,
+        if(ContextCompat.checkSelfPermission(PrincipalActivity.this,
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED){
             Log.i(LOGGPS, "Inicio de recepción de ubicaciones");
 
@@ -249,6 +249,8 @@ GoogleApiClient.ConnectionCallbacks,
     @Override
     protected void onResume(){
         super.onResume();
+
+        enableLocationUpdates();
     }
 
     @Override
@@ -256,7 +258,6 @@ GoogleApiClient.ConnectionCallbacks,
         super.onPause();
 
         barcodeView.pause();
-
     }
 
     public void pause(View view){
@@ -271,8 +272,29 @@ GoogleApiClient.ConnectionCallbacks,
     }
 
     public void resume(View view){
-        configurarScanner();
-        barcodeView.resume();
+        if(ContextCompat.checkSelfPermission(PrincipalActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
+            if(ActivityCompat.shouldShowRequestPermissionRationale(PrincipalActivity.this, Manifest.permission.CAMERA)){
+                // (*) Mostrar una explicación de lo que sucede
+                Log.i("Permisos", "La camara no puede funcionar si no tiene permisos asignados");
+
+                //Confeccionamos el cuadro de dialogo para explicar porque no se puede utilizar la camara
+                Bundle args = new Bundle();
+                args.putString("titulo", "Permisos de Camara Denegado");
+                args.putString("mensaje", "El usuario de la app no otorgo permisos para usar la camara");
+                args.putString("package", getApplicationContext().getPackageName());
+                args.putInt("requestAppSetting", PETICION_PERMISO_CAMARA);
+
+                PermisosDialogFragment dialog = new PermisosDialogFragment();
+                dialog.setArguments(args);
+                dialog.show(getFragmentManager(), "camara");
+
+            }else {
+                ActivityCompat.requestPermissions(PrincipalActivity.this, new String[]{Manifest.permission.CAMERA}, PETICION_PERMISO_CAMARA);
+            }
+        }else {
+            configurarScanner();
+            barcodeView.resume();
+        }
     }
 
     public void triggerScan(View view){
@@ -469,10 +491,10 @@ GoogleApiClient.ConnectionCallbacks,
     public void onConnected(@Nullable Bundle bundle) {
         //Conectado correctamente a Google Play Services
         Log.i(LOGGPS, "conectado");
-        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)!= PackageManager.PERMISSION_GRANTED){
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    PETICION_PERMISO_LOCALIZACION);
-        }else{
+
+        if(ContextCompat.checkSelfPermission(PrincipalActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(PrincipalActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PETICION_PERMISO_LOCALIZACION);
+        }else {
             Location lastLocation = LocationServices.FusedLocationApi.getLastLocation(apiClient);
 
             //* Obtener ultima localización
@@ -498,8 +520,6 @@ GoogleApiClient.ConnectionCallbacks,
 
         //Mandamos la nueva ubicación
         location = loc;
-
-        //Toast.makeText(this, "Latitud: " + loc.getLatitude() + "; Longitud: " + loc.getLongitude() + "; Precision: " + loc.getAccuracy(), Toast.LENGTH_LONG).show();
     }
 
     @Override
@@ -521,17 +541,32 @@ GoogleApiClient.ConnectionCallbacks,
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if(requestCode == PETICION_PERMISO_LOCALIZACION){
-            if(grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                //Permiso concedido
-                @SuppressWarnings("MissingPermission")
-                        Location lastLocation = LocationServices.FusedLocationApi.getLastLocation(apiClient);
+        switch (requestCode){
+            case PETICION_PERMISO_LOCALIZACION:{
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    //Permiso concedido
+                    @SuppressWarnings("MissingPermission")
+                    Location lastLocation = LocationServices.FusedLocationApi.getLastLocation(apiClient);
 
-                //Actualizar posición
-                location = lastLocation;
-            }else{
-                //Permiso denegado
-                Log.e(LOGGPS, "Permiso denegado");
+                    //Actualizar posición
+                    location = lastLocation;
+                }else{
+                    //Permiso denegado
+                    Log.e(LOGGPS, "Permiso denegado");
+                }
+                return;
+            }
+            case PETICION_PERMISO_CAMARA:{
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    //Permiso concedido
+                    Log.i(LOGCAMERA, "Permiso de camara concedido");
+                    configurarScanner();
+                    barcodeView.resume();
+                }else {
+                    //Permiso denegado
+                    Log.e(LOGCAMERA, "Permiso de camara denegado");
+                }
+                return;
             }
         }
     }
