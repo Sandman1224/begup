@@ -604,6 +604,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             getContext().sendBroadcast(intent);
         }
 
+        Log.i("SyncResultFotos", "Inserciones: " + syncResult.stats.numInserts + " Entradas: " + syncResult.stats.numEntries + " Actualizaciones: " + syncResult.stats.numUpdates + " Eliminaciones: " + syncResult.stats.numDeletes);
         reiniciarContadores(syncResult);
 
         return syncBan;
@@ -984,10 +985,6 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             if(tarjetaHashMap.size() > 0) {
                 //Insertar items resultantes
                 Log.i("Tarjetas Baja", "Se encontraron tarjetas que no existen en la BD local. Total: " + tarjetaHashMap.size());
-
-                for (Tarjeta t : tarjetaHashMap.values()){
-                    syncResult.stats.numInserts++;
-                }
             }
 
             if(syncResult.stats.numDeletes > 0){
