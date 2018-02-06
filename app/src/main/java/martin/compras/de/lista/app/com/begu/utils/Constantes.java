@@ -9,7 +9,6 @@ public class Constantes {
      * Puerto que utilizas para la conexión.
      * Dejalo en blanco si no has configurado esta característica.
      */
-    private static final String PUERTO_HOST = ":8080";
     private static final String PUERTO_HOST_IIS = ":81";
 
     /**
@@ -26,7 +25,7 @@ public class Constantes {
 
     public static final String GET_URL_TARJETAS_CATCH = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/initarjeta";
     public static final String TARJETAS_UPDATE = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/tarjetaupdate";
-
+    public static final String TARJETAS_BAJA = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/tarjetabaja";
 
     public static final String GET_URL_FOTOS = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/fotosbegup";
     public static final String INSERT_CONSUMOS = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/consumobegup/";
@@ -65,5 +64,5 @@ public class Constantes {
     /**
      * Parámetros de consultas al servidor
      */
-    public static final int MY_SOCKET_TIMEOUT_MS = 300000;          //5 Minutos - Segundos de espera de la solicitud
+    public static final int MY_SOCKET_TIMEOUT_MS = 5;          //5 Minutos - Segundos de espera de la solicitud
 }

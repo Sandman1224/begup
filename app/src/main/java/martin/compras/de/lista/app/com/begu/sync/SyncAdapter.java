@@ -212,11 +212,11 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             datosPasajes();
         }else{
             //Desde el Servidor
-            datosAlumnos(syncResult);
-            sincronizarTarjetas(syncResult);
-            datosFotos(syncResult);
+            boolean banAlumnos = datosAlumnos(syncResult);
+            boolean banTarjetas = sincronizarTarjetas(syncResult);
+            boolean banFotos = datosFotos(syncResult);
 
-            if(syncResult.stats.numParseExceptions > 0 || syncResult.stats.numIoExceptions > 0){
+            if(banAlumnos || banTarjetas || banFotos){
                 intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_ERROR);
             }else{
                 //Obtenemos datos para la fecha y hora de la última sincronización
@@ -268,9 +268,12 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         return DIRECCION_WS;
     }
 
-    public void datosAlumnos(final SyncResult syncResult){
+    private boolean datosAlumnos(final SyncResult syncResult){
         //Sincronización de los Datos de la tabla ALUMNOS
         Log.i(TAG, "Obteniendo datos de alumnos desde el servidor");
+
+        //Bandera de resultado de sincronización
+        boolean syncBan = false;
 
         Intent intent = new Intent(SyncActivity.ACTION_SYNC);
         boolean bFin = false;
@@ -285,7 +288,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             VolleySingleton.getInstance(getContext()).addToRequestQueue(request);
 
             try{
-                JSONObject response = future.get(60, TimeUnit.SECONDS);
+                JSONObject response = future.get(Constantes.MY_SOCKET_TIMEOUT_MS, TimeUnit.SECONDS);
                 int cantidadRegistros = response.getInt("TotalCount");
                 int pagecountServer = response.getInt("TotalPageCount");
                 syncId = response.getString("Sync");
@@ -323,10 +326,9 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         }
 
         if (syncResult.stats.numParseExceptions > 0 || syncResult.stats.numIoExceptions > 0){
-            syncResult.delayUntil = 30;
-
             //Enviar una señal informando el error
             intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_ALUMNOSERROR);
+            syncBan = true;
         }else{
             SharedPreferences preferences = getContext().getSharedPreferences(Constantes.PREFERENCIAS, Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = preferences.edit();
@@ -340,27 +342,42 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         Log.i("SyncResultAlumnos", "Inserciones: " + syncResult.stats.numInserts + " Entradas: " + syncResult.stats.numEntries + " Actualizaciones: " + syncResult.stats.numUpdates + " Eliminaciones: " + syncResult.stats.numDeletes);
 
         getContext().sendBroadcast(intent);
+
+        reiniciarContadores(syncResult);
+
+        return syncBan;
     }
 
-    public void sincronizarTarjetas(final SyncResult syncResult){
+    private boolean sincronizarTarjetas(final SyncResult syncResult){
+        //Bandera de resultado de sincronización
+        boolean syncBan = false;
+
         Intent intent = new Intent(SyncActivity.ACTION_SYNC);
         String DIRECCION_WS = obtenerDireccionws("Tarjetas");
+
+        Uri uri = ContratoDatos.Tarjetas.URI_CONTENIDO;
+        Cursor cursor = resolver.query(uri, mProjectionTarjetas, null, null, null);
 
         switch (DIRECCION_WS){
             case Constantes.GET_URL_TARJETAS_CATCH:
                 datosTarjetas(syncResult);
                 break;
             case Constantes.TARJETAS_UPDATE:
-                datosPasajesconsumidos(syncResult);
+                datosTarjetasConsumidas(syncResult);
                 break;
             default:
                 Log.i(TAG, "Error");
         }
 
+        // Sincronizamos las tarjetas dadas de baja
+        datosTarjetasBaja(syncResult, cursor);
+
         //Resultado de la sincronización
         if(syncResult.stats.numParseExceptions > 0 || syncResult.stats.numIoExceptions > 0){
             //Enviar una señal informando el error
             intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_TARJETASERROR);
+
+            syncBan = true;
         }else{
             SharedPreferences preferences = getContext().getSharedPreferences(Constantes.PREFERENCIAS, Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = preferences.edit();
@@ -372,14 +389,16 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         }
 
         getContext().sendBroadcast(intent);
-
         Log.i("SyncResultTarjetas", "Inserciones: " + syncResult.stats.numInserts + " Entradas: " + syncResult.stats.numEntries + " Actualizaciones: " + syncResult.stats.numUpdates + " Eliminaciones: " + syncResult.stats.numDeletes);
+
+        reiniciarContadores(syncResult);
+
+        return syncBan;
     }
 
-    public void datosTarjetas(final SyncResult syncResult){
+    private void datosTarjetas(final SyncResult syncResult){
         Log.i(TAG, "Obteniendo datos de tarjetas desde el servidor");
 
-        Intent intent = new Intent(SyncActivity.ACTION_SYNC);
         boolean bFin = false;
         String DIRECCION_WS = obtenerDireccionws("Tarjetas");
         int cantidadPaginas = 0;
@@ -392,7 +411,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             VolleySingleton.getInstance(getContext()).addToRequestQueue(request);
 
             try{
-                JSONObject response = future.get(60, TimeUnit.SECONDS);
+                JSONObject response = future.get(Constantes.MY_SOCKET_TIMEOUT_MS, TimeUnit.SECONDS);
                 int cantidadRegistros = response.getInt("TotalCount");
                 int pagecountServer = response.getInt("TotalPageCount");
 
@@ -429,7 +448,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         }
     }
 
-    private void datosPasajesconsumidos(final SyncResult syncResult){
+    private void datosTarjetasConsumidas(final SyncResult syncResult){
         // Trae solo las tarjetas que tienen consumo para evitar traer toda la tabla
         //En construcción
         boolean bFin = false;
@@ -452,7 +471,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                 request.setRetryPolicy(new DefaultRetryPolicy(60000, 0 , DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
                 VolleySingleton.getInstance(getContext()).addToRequestQueue(request);
 
-                JSONObject response = future.get(60,TimeUnit.SECONDS);
+                JSONObject response = future.get(Constantes.MY_SOCKET_TIMEOUT_MS,TimeUnit.SECONDS);
                 int cantidadRegistros = response.getInt("TotalCount");
                 int pagecountServer = response.getInt("TotalPageCount");
 
@@ -489,7 +508,62 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         }
     }
 
-    private void datosFotos(final SyncResult syncResult){
+    private void datosTarjetasBaja(final SyncResult syncResult, final Cursor cursor){
+        Log.i(TAG, "Obteniendo tarjetas dadas de baja");
+
+        boolean bFin = false;
+        String DIRECCION_WS = Constantes.TARJETAS_BAJA;
+        int cantidadPaginas = 0;
+
+        while (!bFin){
+            RequestFuture<JSONObject> future = RequestFuture.newFuture();
+            JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, DIRECCION_WS, new JSONObject(), future, future);
+            request.setRetryPolicy(new DefaultRetryPolicy(60000, 0, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+            VolleySingleton.getInstance(getContext()).addToRequestQueue(request);
+
+            try{
+                JSONObject response = future.get(Constantes.MY_SOCKET_TIMEOUT_MS, TimeUnit.SECONDS);
+                int cantidadRegistros = response.getInt("TotalCount");
+                int pagecountServer = response.getInt("TotalPageCount");
+
+                if(cantidadRegistros > 0){
+                    JSONArray tarjetas = response.getJSONArray("Tarjetas");
+
+                    int respuesta = tarjetas.length();
+                    int regProcesados = respuestaTarjetasbaja(syncResult, tarjetas, cursor);  //chequear linea
+
+                    Log.i("Paginación Tarjetas", DIRECCION_WS);
+
+                    if(verificarSuma(respuesta, regProcesados)){
+                        DIRECCION_WS = response.getString("NextPageUrl");
+                        cantidadPaginas++;
+
+                        if((DIRECCION_WS == "null") && (pagecountServer == cantidadPaginas))
+                            bFin = true;
+                    }else{
+                        syncResult.stats.numParseExceptions++;
+                        bFin = true;
+                    }
+                }else {
+                    bFin = true;
+                }
+
+            }catch (InterruptedException | ExecutionException | TimeoutException e){
+                e.printStackTrace();
+                bFin = true;
+                syncResult.stats.numIoExceptions++;
+            }catch (JSONException e){
+                e.printStackTrace();
+                bFin = true;
+                syncResult.stats.numParseExceptions++;
+            }
+        }
+    }
+
+    private boolean datosFotos(final SyncResult syncResult){
+        //Bandera de resultado de sincronización
+        boolean syncBan = false;
+
         Uri uri = ContratoDatos.DescargaFotos.URI_CONTENIDO;
         Cursor c = resolver.query(uri, mProjectionDescargas, null, null, null);
         boolean bFin = false;
@@ -505,7 +579,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                 VolleySingleton.getInstance(getContext()).addToRequestQueue(request);
 
                 try{
-                    JSONObject response = future.get(60, TimeUnit.SECONDS);
+                    JSONObject response = future.get(Constantes.MY_SOCKET_TIMEOUT_MS, TimeUnit.SECONDS);
                     Log.i("Datos Servidor", response.toString());
 
                     respuestaFotos(syncResult, response);
@@ -516,6 +590,8 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                 }
 
                 if(bFin){
+                    syncBan = true;
+
                     //Enviamos mensaje de error a la interfaz
                     Intent intent = new Intent(SyncActivity.ACTION_SYNC);
                     intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_FOTOSERROR);
@@ -527,6 +603,10 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             intent.putExtra(SYNC_ACTION, SyncActivity.ACTION_SYNC_FOTOSSINCRONIZADAS);
             getContext().sendBroadcast(intent);
         }
+
+        reiniciarContadores(syncResult);
+
+        return syncBan;
     }
 
     private void datosPasajes(){
@@ -559,7 +639,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                 VolleySingleton.getInstance(getContext()).addToRequestQueue(request);
 
                 try{
-                    JSONObject response = future.get(60, TimeUnit.SECONDS);
+                    JSONObject response = future.get(Constantes.MY_SOCKET_TIMEOUT_MS, TimeUnit.SECONDS);
                     Log.i("Datos Servidor", response.toString());
 
                     //CreditoUsado < Credito Temporal
@@ -742,10 +822,11 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             Cursor c = resolver.query(uri, mProjectionTarjetas, null, null, null);
             assert c != null;
 
-            Log.i(TAG, "Se encontraron " + c.getCount() + "tarjetas locales");
+            Log.i(TAG, "Se encontraron " + c.getCount() + " tarjetas locales");
 
             //Encontrar datos obsoletos
             String num_tarjeta, dni, fecha, credito_total, credito_usado, credito_temporal;
+            boolean borrado;
             while (c.moveToNext()) {
                 num_tarjeta = c.getString(NUMEROtarjeta);
                 dni = c.getString(DNItarjeta);
@@ -803,6 +884,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                         .withValue(ContratoDatos.Tarjetas.CREDITO_TOTAL, t.CREDITO_TOTAL)
                         .withValue(ContratoDatos.Tarjetas.CREDITO_USADO, t.CREDITO_USADO)
                         .withValue(ContratoDatos.Tarjetas.CREDITO_TEMPORAL, t.CREDITO_TEMPORAL)
+                        .withValue(ContratoDatos.Tarjetas.BORRADO, 0)
                         .build()
                 );
                 syncResult.stats.numInserts++;
@@ -829,12 +911,12 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         return regProcesados;
     }
 
-    private int respuestaConsumos(SyncResult syncResult, JSONArray consumos){
+    private int respuestaTarjetasbaja(SyncResult syncResult, JSONArray tarjetas, Cursor c){
         int regProcesados = 0;
 
-        if(consumos != null) {
+        if(tarjetas != null){
             //Parsear con Gson
-            Tarjeta[] res = gson.fromJson(consumos != null ? consumos.toString() : null, Tarjeta[].class);
+            Tarjeta[] res = gson.fromJson(tarjetas != null ? tarjetas.toString() : null, Tarjeta[].class);
             List<Tarjeta> data = Arrays.asList(res);
 
             //Lista para recolección de operaciones pendientes
@@ -842,101 +924,90 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
 
             //Tabla hash para recibir las entradas del servidor
             HashMap<String, Tarjeta> tarjetaHashMap = new HashMap<String, Tarjeta>();
-            for (Tarjeta t : data) {
+            for(Tarjeta t : data){
                 tarjetaHashMap.put(t.KEY, t);
                 syncResult.stats.numEntries++;
                 regProcesados++;
             }
 
-            //Consultar registros remotos actuales
-            Uri uri = ContratoDatos.Tarjetas.URI_CONTENIDO;
-            Cursor c = resolver.query(uri, mProjectionTarjetas, null, null, null);
+            //Consultamos registros remotos actuales para analizar diferencias
             assert c != null;
 
             Log.i(TAG, "Se encontraron " + c.getCount() + "tarjetas locales");
 
-            //Encontrar datos obsoletos
-            String num_tarjeta, dni, fecha, credito_total, credito_usado, credito_temporal;
-            while (c.moveToNext()) {
+            //Buscamos datos obsoletos
+            String num_tarjeta;
+            int borrado;
+            while (c.moveToNext()){
                 num_tarjeta = c.getString(NUMEROtarjeta);
-                dni = c.getString(DNItarjeta);
-                fecha = c.getString(FECHAtarjeta);
-                credito_total = c.getString(CREDITOTOTALtarjeta);
-                credito_usado = c.getString(CREDITOUSADOtarjeta);
-                credito_temporal = c.getString(CREDITOTEMPORALtarjeta);
+                borrado = c.getInt(BORRADOtarjeta);
 
                 Tarjeta match = tarjetaHashMap.get(num_tarjeta);
 
-                if (match != null) {
-                    //Esta entrada existe, por lo que se remueve del mapeo
+
+
+                if(match != null){
+                    //Esta entrada existe en la BD local, por lo que remuevo del mapeo
                     tarjetaHashMap.remove(num_tarjeta);
 
                     Uri existingUri = ContratoDatos.Tarjetas.crearUriTarjeta(num_tarjeta);
 
                     //Comprobar si la tarjeta necesita ser actualizada
-                    boolean b1 = match.KEY != null && !match.KEY.equals(num_tarjeta);
-                    boolean b2 = match.DNI != null && !match.DNI.equals(dni);
-                    boolean b3 = match.FECHA != null && !match.FECHA.equals(fecha);
-                    boolean b4 = match.CREDITO_TOTAL != null && !match.CREDITO_TOTAL.equals(credito_total);
-                    boolean b5 = match.CREDITO_USADO != null && !match.CREDITO_USADO.equals(credito_usado);
-                    boolean b6 = match.CREDITO_TEMPORAL != null && !match.CREDITO_TEMPORAL.equals(credito_temporal);
+                    boolean b1 = match.BORRADO != null && !match.BORRADO.equals(borrado);
 
-                    if (b1 || b2 || b3 || b4 || b5 || b6) {
+                    if(b1){
                         Log.i(TAG, "Programando actualización de: " + existingUri);
 
+                        if(match.BORRADO == "true"){
+                            match.BORRADO = "1";
+                        }else {
+                            match.BORRADO = "0";
+                        }
+
                         ops.add(ContentProviderOperation.newUpdate(existingUri)
-                                .withValue(ContratoDatos.Tarjetas.NUM_TARJETAS, match.KEY)
-                                .withValue(ContratoDatos.Tarjetas.FECHA, match.FECHA)
-                                .withValue(ContratoDatos.Tarjetas.DNI, match.DNI)
-                                .withValue(ContratoDatos.Tarjetas.CREDITO_TOTAL, match.CREDITO_TOTAL)
-                                .withValue(ContratoDatos.Tarjetas.CREDITO_USADO, match.CREDITO_USADO)
-                                .withValue(ContratoDatos.Tarjetas.CREDITO_TEMPORAL, match.CREDITO_TEMPORAL)
+                        .withValue(ContratoDatos.Tarjetas.BORRADO, (match.BORRADO == "true" ? 1 : 0))
                                 .build()
                         );
-                        syncResult.stats.numUpdates++;
-                    } else {
+
+                        syncResult.stats.numDeletes++;
+                    }else {
                         Log.i(TAG, "No hay acciones para este registro: " + existingUri);
                     }
-                } else {
+                }else {
                     Log.i(TAG, "Ver si se elimina");
                     // * Ver caso de eliminación
                 }
             }
             c.close();
 
-            //Insertar items resultantes
-            for (Tarjeta t : tarjetaHashMap.values()) {
-                Log.i(TAG, "Programando inserción de: " + t.KEY);
-                ops.add(ContentProviderOperation.newInsert(ContratoDatos.Tarjetas.URI_CONTENIDO)
-                        .withValue(ContratoDatos.Tarjetas.NUM_TARJETAS, t.KEY)
-                        .withValue(ContratoDatos.Tarjetas.FECHA, t.FECHA)
-                        .withValue(ContratoDatos.Tarjetas.DNI, t.DNI)
-                        .withValue(ContratoDatos.Tarjetas.CREDITO_TOTAL, t.CREDITO_TOTAL)
-                        .withValue(ContratoDatos.Tarjetas.CREDITO_USADO, t.CREDITO_USADO)
-                        .withValue(ContratoDatos.Tarjetas.CREDITO_TEMPORAL, t.CREDITO_TEMPORAL)
-                        .build()
-                );
-                syncResult.stats.numInserts++;
+            // Si quedan tarjetas para dar de alta hay que informar y detectar porque esto es un ERROR.
+            if(tarjetaHashMap.size() > 0) {
+                //Insertar items resultantes
+                Log.i("Tarjetas Baja", "Se encontraron tarjetas que no existen en la BD local. Total: " + tarjetaHashMap.size());
+
+                for (Tarjeta t : tarjetaHashMap.values()){
+                    syncResult.stats.numInserts++;
+                }
             }
 
-            if (syncResult.stats.numInserts > 0 || syncResult.stats.numUpdates > 0 || syncResult.stats.numDeletes > 0) {
+            if(syncResult.stats.numDeletes > 0){
                 Log.i(TAG, "Aplicando operaciones");
 
-                try {
+                try{
                     resolver.applyBatch(ContratoDatos.AUTHORITY, ops);
-                } catch (RemoteException | OperationApplicationException e) {
+                }catch (RemoteException | OperationApplicationException e){
                     e.printStackTrace();
 
                     syncResult.stats.numIoExceptions++;
                 }
 
                 resolver.notifyChange(ContratoDatos.Tarjetas.URI_CONTENIDO, null);
-                Log.i(TAG, "Sincronización finalizada");
-            } else {
+
+                Log.i(TAG, "Sincronización de baja de tarjetas finalizada");
+            }else {
                 Log.i(TAG, "No se requiere sincronización");
             }
         }
-
         return regProcesados;
     }
 
@@ -955,6 +1026,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         HashMap<String, Foto> fotoHashMap = new HashMap<String, Foto>();
         for (Foto foto : data){
             fotoHashMap.put(foto.DNI, foto);
+            syncResult.stats.numEntries++;
         }
 
         //Consultar en la BD local los registros remotos recibidos
@@ -1045,6 +1117,16 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         resolver.notifyChange(ContratoDatos.DescargaFotos.URI_CONTENIDO, null, false);
 
         getContext().sendBroadcast(intent);
+    }
+
+    private void reiniciarContadores(SyncResult syncResult){
+        //Errores
+        syncResult.stats.numParseExceptions = 0;
+        syncResult.stats.numIoExceptions = 0;
+        //Estadísticas de Sincronización
+        syncResult.stats.numInserts = 0;
+        syncResult.stats.numUpdates = 0;
+        syncResult.stats.numDeletes = 0;
     }
 
     private boolean verificarSuma(int respuesta, int procesados){
