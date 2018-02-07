@@ -130,7 +130,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 
     public Cursor fetchTarjeta(String numeroTarjeta) throws SQLException{
         Cursor cursor = myDatabase.rawQuery(
-                "SELECT _id, NUM_TARJETAS, DNI, CREDITO_TOTAL, CREDITO_USADO, CREDITO_TEMPORAL " +
+                "SELECT _id, NUM_TARJETAS, DNI, FECHA, CREDITO_TOTAL, CREDITO_USADO, CREDITO_TEMPORAL, BORRADO " +
                 "from BEGU_TARJETAS " +
                 "where (NUM_TARJETAS = ?)", new String[]{numeroTarjeta});
 

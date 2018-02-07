@@ -327,7 +327,7 @@ public class PrincipalActivity extends AppCompatActivity implements
         return barcodeView.onKeyDown(keyCode, event) || super.onKeyDown(keyCode, event);
     }
 
-    public void consultarTarjeta(String numeroTarjeta){
+    public void consultarTarjeta(final String numeroTarjeta){
         loDatos = (RelativeLayout) findViewById(R.id.loDatos);
 
         myDBHelper = new DataBaseHelper(this);
@@ -339,11 +339,11 @@ public class PrincipalActivity extends AppCompatActivity implements
             tvSaldo = (TextView) findViewById(R.id.tvSaldo);
             ivEstado = (ImageView) findViewById(R.id.ivEstado);
 
-            int credito = cursorTarjetas.getInt(5) - cursorTarjetas.getInt(4);
+            int credito = cursorTarjetas.getInt(Constantes.TARJETAScreditotemporal) - cursorTarjetas.getInt(Constantes.TARJETAScreditousado);
 
-            Log.i("Saldos", "TEMPORAL: " + cursorTarjetas.getInt(5) + " ;USADO: " + cursorTarjetas.getInt(4));
+            Log.i("Saldos", "TEMPORAL: " + cursorTarjetas.getInt(Constantes.TARJETAScreditotemporal) + " ;USADO: " + cursorTarjetas.getInt(Constantes.TARJETAScreditousado));
 
-            if(credito > 0) {
+            if(credito > 0 && cursorTarjetas.getInt(Constantes.TARJETASborrado) == 0) {
                 ivEstado.setImageResource(R.drawable.aprobado);
                 descontarPasaje(cursorTarjetas, location);
 
@@ -352,10 +352,10 @@ public class PrincipalActivity extends AppCompatActivity implements
             }
             else {
                 ivEstado.setImageResource(R.drawable.desaprobado);
-                tvSaldo.setText("Sin crédito");
+                tvSaldo.setText("Tarjeta sin saldo o bloqueada");
             }
 
-            datosFoto(cursorTarjetas.getString(2), myDBHelper);
+            datosFoto(cursorTarjetas.getString(Constantes.TARJETASdni), myDBHelper);
         }else{
             loDatos.setVisibility(View.GONE);
             Toast.makeText(this, "No se encuentra el pasajero", Toast.LENGTH_LONG).show();
@@ -365,8 +365,8 @@ public class PrincipalActivity extends AppCompatActivity implements
     }
 
     public void descontarPasaje(Cursor cursorTarjetas, Location location){
-        int pasajes = cursorTarjetas.getInt(4) + 1;
-        String numTarjeta = cursorTarjetas.getString(1);
+        int pasajes = cursorTarjetas.getInt(Constantes.TARJETAScreditousado) + 1;
+        String numTarjeta = cursorTarjetas.getString(Constantes.TARJETASnum_tarjetas);
         java.text.DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd, HH:mm:ss");
         String fechaActual = dateFormat.format(Calendar.getInstance().getTime());
         SharedPreferences preferences = getSharedPreferences(Constantes.PREFERENCIAS, Context.MODE_PRIVATE);

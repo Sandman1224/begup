@@ -31,21 +31,6 @@ public class Constantes {
     public static final String INSERT_CONSUMOS = DIRECCION_WEB + PUERTO_HOST_IIS + "/ws/consumobegup/";
 
     /**
-     * Campos de las respuestas Json
-     */
-    public static final String ID_USUARIO = "idGasto";
-    public static final String ESTADO = "estado";
-    public static final String USUARIOS = "datos";
-    public static final String DATOS = "datos";
-    public static final String MENSAJE = "mensaje";
-
-    /**
-     * Códigos del campo {@link ESTADO}
-     */
-    public static final String SUCCESS = "1";
-    public static final String FAILED = "2";
-
-    /**
      * Tipo de cuenta para la sincronización
      */
     public static final String ACCOUNT_TYPE = "martin.compras.de.lista.app.com.begu.account";
@@ -65,4 +50,17 @@ public class Constantes {
      * Parámetros de consultas al servidor
      */
     public static final int MY_SOCKET_TIMEOUT_MS = 5;          //5 Minutos - Segundos de espera de la solicitud
+
+    /**
+     * Tablas de la BD
+     */
+    //TARJETAS
+    public static final int TARJETASid = 0;
+    public static final int TARJETASnum_tarjetas = 1;
+    public static final int TARJETASdni = 2;
+    public static final int TARJETASfecha = 3;
+    public static final int TARJETAScreditototal = 4;
+    public static final int TARJETAScreditousado = 5;
+    public static final int TARJETAScreditotemporal = 6;
+    public static final int TARJETASborrado = 7;
 }
