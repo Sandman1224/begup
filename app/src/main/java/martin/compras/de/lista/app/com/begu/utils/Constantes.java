@@ -49,7 +49,8 @@ public class Constantes {
     /**
      * Parámetros de consultas al servidor
      */
-    public static final int MY_SOCKET_TIMEOUT_MS = 5;          //5 Minutos - Segundos de espera de la solicitud
+    public static final int MY_SOCKET_TIMEOUT_MS = 60;          //5 Minutos - Segundos de espera de la solicitud
+    public static final int NUM_MAX_RETRIES = 5;
 
     /**
      * Tablas de la BD

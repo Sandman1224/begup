@@ -47,6 +47,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.HttpURLConnection;
@@ -87,6 +89,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
     ContentResolver resolver;
     private Gson gson = new Gson();
     private boolean banSyncRemota;
+    private String TAGBUG = "BUG-CORREGIR";
 
     public interface banSyncRemotaListener{
         public void onBanSyncRemotaChange(boolean ban);
@@ -315,11 +318,17 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                     bFin = true;
                 }
             }catch (InterruptedException | ExecutionException | TimeoutException e){
-                e.printStackTrace();
+                StringWriter errors = new StringWriter();
+                e.printStackTrace(new PrintWriter(errors));
+                Log.e(TAGBUG, errors.toString());
+
                 bFin = true;
                 syncResult.stats.numIoExceptions++;
             }catch (JSONException e){
-                e.printStackTrace();
+                StringWriter errors = new StringWriter();
+                e.printStackTrace(new PrintWriter(errors));
+                Log.e(TAGBUG, errors.toString());
+
                 bFin = true;
                 syncResult.stats.numParseExceptions++;
             }
@@ -780,7 +789,9 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                 try {
                     resolver.applyBatch(ContratoDatos.AUTHORITY, ops);
                 } catch (RemoteException | OperationApplicationException e) {
-                    e.printStackTrace();
+                    StringWriter errors = new StringWriter();
+                    e.printStackTrace(new PrintWriter(errors));
+                    Log.e(TAGBUG, errors.toString());
 
                     //Al haber un error se resta el número de entradas para que no coincida la suma de verificacion
                     //regProcesados = -1;
@@ -827,7 +838,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
 
             //Encontrar datos obsoletos
             String num_tarjeta, dni, fecha, credito_total, credito_usado, credito_temporal;
-            boolean borrado;
+            int borrado;
             while (c.moveToNext()) {
                 num_tarjeta = c.getString(NUMEROtarjeta);
                 dni = c.getString(DNItarjeta);
@@ -835,6 +846,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                 credito_total = c.getString(CREDITOTOTALtarjeta);
                 credito_usado = c.getString(CREDITOUSADOtarjeta);
                 credito_temporal = c.getString(CREDITOTEMPORALtarjeta);
+                borrado = c.getInt(BORRADOtarjeta);
 
                 Tarjeta match = tarjetaHashMap.get(num_tarjeta);
 
@@ -851,8 +863,9 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                     boolean b4 = match.CREDITO_TOTAL != null && !match.CREDITO_TOTAL.equals(credito_total);
                     boolean b5 = match.CREDITO_USADO != null && !match.CREDITO_USADO.equals(credito_usado);
                     boolean b6 = match.CREDITO_TEMPORAL != null && !match.CREDITO_TEMPORAL.equals(credito_temporal);
+                    boolean b7 = match.BORRADO != null && !match.BORRADO.equals(borrado);
 
-                    if (b1 || b2 || b3 || b4 || b5 || b6) {
+                    if (b1 || b2 || b3 || b4 || b5 || b6 || b7) {
                         Log.i(TAG, "Programando actualización de: " + existingUri);
 
                         ops.add(ContentProviderOperation.newUpdate(existingUri)
@@ -862,6 +875,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                                 .withValue(ContratoDatos.Tarjetas.CREDITO_TOTAL, match.CREDITO_TOTAL)
                                 .withValue(ContratoDatos.Tarjetas.CREDITO_USADO, match.CREDITO_USADO)
                                 .withValue(ContratoDatos.Tarjetas.CREDITO_TEMPORAL, match.CREDITO_TEMPORAL)
+                                .withValue(ContratoDatos.Tarjetas.BORRADO, 0)
                                 .build()
                         );
                         syncResult.stats.numUpdates++;

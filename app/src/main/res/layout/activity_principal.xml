@@ -30,19 +30,36 @@
 
             <android.support.design.widget.FloatingActionButton
                 android:id="@+id/btnResumir"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:elevation="6dp"
+                android:layout_margin="5dp"
                 android:onClick="resume"
                 android:src="@drawable/ic_scanner" />
 
             <android.support.design.widget.FloatingActionButton
+                android:id="@+id/btnFlash"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:onClick="switchFlashlight"
+                android:layout_margin="5dp"
+                android:tag="Encender"
+                app:srcCompat="@drawable/ic_flash_off" />
+
+            <android.support.design.widget.FloatingActionButton
                 android:id="@+id/btnDetener"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:elevation="6dp"
+                android:layout_margin="5dp"
                 android:onClick="pause"
                 android:src="@drawable/ic_detener" />
+
+
+
+
         </LinearLayout>
     </RelativeLayout>
 
@@ -137,6 +154,4 @@
             android:layout_below="@+id/ivEstado" />
 
     </RelativeLayout>
-
-
 </LinearLayout>

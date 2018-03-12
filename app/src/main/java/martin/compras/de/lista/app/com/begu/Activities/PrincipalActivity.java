@@ -23,6 +23,7 @@ import android.graphics.drawable.Drawable;
 import android.hardware.Camera;
 import android.location.Location;
 import android.net.Uri;
+import android.os.Build;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
@@ -30,6 +31,7 @@ import android.provider.ContactsContract;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -72,7 +74,9 @@ import com.google.zxing.client.android.BeepManager;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.journeyapps.barcodescanner.BarcodeCallback;
 import com.journeyapps.barcodescanner.BarcodeResult;
+import com.journeyapps.barcodescanner.CaptureManager;
 import com.journeyapps.barcodescanner.DecoratedBarcodeView;
+import com.journeyapps.barcodescanner.camera.CameraManager;
 import com.journeyapps.barcodescanner.camera.CameraSettings;
 
 import java.io.ByteArrayOutputStream;
@@ -91,6 +95,7 @@ import martin.compras.de.lista.app.com.begu.providers.ContratoDatos;
 import martin.compras.de.lista.app.com.begu.utils.Constantes;
 
 public class PrincipalActivity extends AppCompatActivity implements
+        DecoratedBarcodeView.TorchListener,
         GoogleApiClient.OnConnectionFailedListener,
         GoogleApiClient.ConnectionCallbacks,
         LocationListener{
@@ -98,12 +103,14 @@ public class PrincipalActivity extends AppCompatActivity implements
     private static final String TAG = PrincipalActivity.class.getSimpleName();
     private static final String LOGGPS = "localizacion";
     private static final String LOGCAMERA = "camara";
+    private FloatingActionButton switchFlashlightButton;
     private TextView tvNombre;
     private TextView tvGenero;
     private TextView tvSaldo;
     private ImageView ivAlumno;
     private ImageView ivEstado;
     private DecoratedBarcodeView barcodeView;
+    private CaptureManager capture;
     private RelativeLayout loDatos;
     private String lastText;
     private DataBaseHelper myDBHelper;
@@ -123,9 +130,6 @@ public class PrincipalActivity extends AppCompatActivity implements
         public void barcodeResult(BarcodeResult result) {
             if (result.getText() == null || result.getText().equals(lastText)){
                 //Prevenir escaneos duplicados
-                if ((result.getText() != null) && (result.getText().equals(lastText))) {
-                    Log.i("ESCANEO", "El código ya fue escaneado");
-                }
                 return;
             }
 
@@ -150,7 +154,17 @@ public class PrincipalActivity extends AppCompatActivity implements
         barcodeView.decodeContinuous(callback);
         beepManager = new BeepManager(this);
 
+        switchFlashlightButton = (FloatingActionButton) findViewById(R.id.btnFlash);
+
         resolver = this.getContentResolver();
+
+        // Coprobamos si tenemos flash
+        if(!hasflash()){
+            switchFlashlightButton.setVisibility(View.GONE);
+        }else {
+            // Apago por defecto el flash de la camara si lo tuviera
+            onTorchOff();
+        }
 
         //GPS
         apiClient = new GoogleApiClient.Builder(this)
@@ -159,8 +173,13 @@ public class PrincipalActivity extends AppCompatActivity implements
                 .addApi(LocationServices.API)
                 .build();
 
-        //Inicializamos la obtención de localizaciones
+        // Inicializamos la obtención de localizaciones
         enableLocationUpdates();
+    }
+
+    private boolean hasflash(){
+        return getApplicationContext().getPackageManager()
+                .hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
     }
 
     private void enableLocationUpdates(){
@@ -216,6 +235,13 @@ public class PrincipalActivity extends AppCompatActivity implements
     }
 
     @Override
+    public void onSaveInstanceState(Bundle outState, PersistableBundle outPersistentState) {
+        super.onSaveInstanceState(outState, outPersistentState);
+
+        capture.onSaveInstanceState(outState);
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.menu_activityprincipal, menu);
@@ -250,14 +276,27 @@ public class PrincipalActivity extends AppCompatActivity implements
     protected void onResume(){
         super.onResume();
 
+        barcodeView.resume();
         enableLocationUpdates();
+
+        // Coprobamos si tenemos flash
+        if(!hasflash()){
+            switchFlashlightButton.setVisibility(View.GONE);
+        }
     }
+
+
 
     @Override
     protected void onPause(){
         super.onPause();
 
         barcodeView.pause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
     }
 
     public void pause(View view){
@@ -269,9 +308,15 @@ public class PrincipalActivity extends AppCompatActivity implements
 
         ivAlumno = (ImageView) findViewById(R.id.ivAlumno);
         ivAlumno.setImageResource(R.drawable.ic_alumno);
+
+        //switchFlashlightButton = (FloatingActionButton) findViewById(R.id.btnFlash);
+        //switchFlashlightButton.setVisibility(View.GONE);
     }
 
     public void resume(View view){
+        switchFlashlightButton = (FloatingActionButton) findViewById(R.id.btnFlash);
+        switchFlashlightButton.setVisibility(View.VISIBLE);
+
         if(ContextCompat.checkSelfPermission(PrincipalActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
             if(ActivityCompat.shouldShowRequestPermissionRationale(PrincipalActivity.this, Manifest.permission.CAMERA)){
                 // (*) Mostrar una explicación de lo que sucede
@@ -293,6 +338,7 @@ public class PrincipalActivity extends AppCompatActivity implements
             }
         }else {
             configurarScanner();
+            //capture.onResume();
             barcodeView.resume();
         }
     }
@@ -569,5 +615,30 @@ public class PrincipalActivity extends AppCompatActivity implements
                 return;
             }
         }
+    }
+
+    public void switchFlashlight(View view){
+
+        if("Encender".equals(switchFlashlightButton.getTag())){
+            barcodeView.setTorchOn();
+            switchFlashlightButton.setTag("Apagar");
+            switchFlashlightButton.setImageResource(R.drawable.ic_flash_off);
+        }else {
+            barcodeView.setTorchOff();
+            switchFlashlightButton.setTag("Encender");
+            switchFlashlightButton.setImageResource(R.drawable.ic_flash_on);
+        }
+    }
+
+    @Override
+    public void onTorchOn() {
+        switchFlashlightButton.setTag("Apagar");
+        switchFlashlightButton.setImageResource(R.drawable.ic_flash_off);
+    }
+
+    @Override
+    public void onTorchOff() {
+        switchFlashlightButton.setTag("Encender");
+        switchFlashlightButton.setImageResource(R.drawable.ic_flash_on);
     }
 }
